@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>WeatherNow</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <div class="container">
+    <h1 class="app-title">WeatherNow ☀️</h1>
+    <div class="search-box">
+      <input type="text" id="city-input" placeholder="Enter a city..." oninput="suggestCities()" list="city-suggestions" />
+      <datalist id="city-suggestions"></datalist>
+      <button onclick="getWeather()">
+        <span>&#128269;</span>
+      </button>
+    </div>
+    <div class="weather-info" id="weather-info"></div>
+  </div>
+
+  <script>
+    const weatherInfo = document.getElementById("weather-info");
+    const body = document.body;
+    const weatherApiKey = 'e04ee0340538988073eeb1c09c0de1c5';
+    const pexelsApiKey = '3VGJr0A4q81h8IwzaLgGiKnlxgpcuHZuHUU0wDE5oyAxStNHWBQ3vXpu';
+
+    async function getWeather() {
+      const city = document.getElementById("city-input").value.trim();
+      if (!city) return;
+
+      try {
+        const weatherUrl = `https://api.openweathermap.org/data/2.5/weather?q=${city}&units=metric&appid=${weatherApiKey}`;
+        const weatherRes = await fetch(weatherUrl);
+        if (!weatherRes.ok) throw new Error("Weather data not found.");
+        const weatherData = await weatherRes.json();
+
+        const { name, main, weather, wind, coord, timezone } = weatherData;
+
+        let hourlyForecastHTML = '';
+        try {
+          const oneCallUrl = `https://api.openweathermap.org/data/3.0/onecall?lat=${coord.lat}&lon=${coord.lon}&exclude=minutely,daily,alerts&units=metric&appid=${weatherApiKey}`;
+          const forecastRes = await fetch(oneCallUrl);
+          if (!forecastRes.ok) throw new Error("Forecast not available");
+          const forecastData = await forecastRes.json();
+
+          if (!forecastData.hourly || forecastData.hourly.length === 0) throw new Error();
+
+          hourlyForecastHTML = '<h3>Next 12 Hours</h3><div class="hourly-forecast">';
+          for (let i = 0; i < 12; i++) {
+            const hourData = forecastData.hourly[i];
+            const cityTime = new Date((hourData.dt + forecastData.timezone_offset) * 1000);
+            const timeStr = cityTime.toLocaleTimeString('en-US', { hour: 'numeric', hour12: true });
+
+            hourlyForecastHTML += `
+              <div class="hour-box">
+                <p><strong>${timeStr}</strong></p>
+                <p>${hourData.temp.toFixed(1)}°C</p>
+                <p>${hourData.weather[0].main}</p>
+              </div>
+            `;
+          }
+          hourlyForecastHTML += '</div>';
+        } catch {}
+
+        const utcTime = new Date(new Date().getTime() + new Date().getTimezoneOffset() * 60000);
+        const cityTime = new Date(utcTime.getTime() + timezone * 1000);
+        const formattedTime = cityTime.toLocaleString('en-US', {
+          weekday: 'long', year: 'numeric', month: 'long',
+          day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true
+        });
+
+        weatherInfo.innerHTML = `
+          <div class="weather-card">
+            <h2>${name}</h2>
+            <p><strong>Local Time:</strong> ${formattedTime}</p>
+            <p><strong>Temperature:</strong> ${main.temp}°C</p>
+            <p><strong>Condition:</strong> ${weather[0].main}</p>
+            <p><strong>Humidity:</strong> ${main.humidity}%</p>
+            <p><strong>Wind Speed:</strong> ${wind.speed} m/s</p>
+          </div>
+          ${hourlyForecastHTML}
+        `;
+
+        const pexelsUrl = `https://api.pexels.com/v1/search?query=${city}&per_page=1`;
+        const imgRes = await fetch(pexelsUrl, {
+          headers: { Authorization: pexelsApiKey }
+        });
+        const imgData = await imgRes.json();
+        if (imgData.photos?.length > 0) {
+          body.style.backgroundImage = `url('${imgData.photos[0].src.original}')`;
+        } else {
+          body.style.backgroundImage = '';
+        }
+      } catch (error) {
+        weatherInfo.innerHTML = `<p class="error">Error: ${error.message}</p>`;
+      }
+    }
+
+    async function suggestCities() {
+      const input = document.getElementById("city-input").value.trim();
+      const datalist = document.getElementById("city-suggestions");
+      if (input.length < 2) return;
+
+      const geoUrl = `https://api.openweathermap.org/geo/1.0/direct?q=${input}&limit=5&appid=${weatherApiKey}`;
+      try {
+        const res = await fetch(geoUrl);
+        const data = await res.json();
+        datalist.innerHTML = "";
+        data.forEach(loc => {
+          const opt = document.createElement("option");
+          opt.value = `${loc.name}${loc.state ? ', ' + loc.state : ''}, ${loc.country}`;
+          datalist.appendChild(opt);
+        });
+      } catch (err) {
+        console.error("Autocomplete error:", err);
+      }
+    }
+  </script>
+</body>
+</html>
