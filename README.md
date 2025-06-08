@@ -2,7 +2,7 @@
 
 WeatherNow is a clean, responsive weather application built using HTML, CSS, and JavaScript. It allows users to search for any city and view real-time weather data, including temperature, humidity, wind speed, and current weather conditions. The app also includes a 12-hour hourly forecast and dynamic background images based on the selected location.
 
-Live Site: [https://your-vercel-url.vercel.app](https://weathernow-rohithyv.vercel.app/)
+Live Site: [https://weathernow-rohithyv.vercel.app.app](https://weathernow-rohithyv.vercel.app/)
 
 ## Features
 
